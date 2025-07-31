@@ -4,35 +4,51 @@ const I32AddRepeatCount = 100000000;
 const GrayscaleRepeatCount = 30000000;
 const TrialCount = 10;
 
-test();
+let MainEl;
+
+function printMain(str) {
+  return new Promise((resolve) => {
+    MainEl.value += str + "\n";
+
+    setTimeout(resolve, 0);
+  })
+}
+
+
+
+window.onload = () => {
+  MainEl = document.getElementsByTagName("textarea")[0];
+}
+
+window.btnClick = test;
 
 async function test() {
-  console.log("[i32 add wasm]");
-  console.log("v0:");
+  await printMain("[i32 add wasm]");
+  await printMain("v0:");
   await i32AddWasm_v0();
-  console.log("v1:");
+  await printMain("v1:");
   await i32AddWasm_v1();
-  console.log("v2:");
+  await printMain("v2:");
   await i32AddWasm_v2();
-  console.log("final:");
+  await printMain("final:");
   await i32AddWasm_final();
 
-  console.log("[i32 add js]");
+  await printMain("[i32 add js]");
   i32AddJs();
 
-  console.log("[image grayscale wasm]");
-  console.log("v0:");
+  await printMain("[image grayscale wasm]");
+  await printMain("v0:");
   await grayscaleWasm_v0();
-  console.log("v1:");
+  await printMain("v1:");
   await grayscaleWasm_v1();
-  console.log("v2:");
+  await printMain("v2:");
   await grayscaleWasm_v2();
-  console.log("v3:");
+  await printMain("v3:");
   await grayscaleWasm_v3();
-  console.log("final:");
+  await printMain("final:");
   await grayscaleWasm_final();
 
-  console.log("[image grayscale js]");
+  await printMain("[image grayscale js]");
   grayscaleJs();
 }
 
@@ -68,11 +84,13 @@ function printResults(results) {
   }
   stdDeviationWOFirst = Math.sqrt(tmp0 / (results.length-1));
 
-  console.log(`시행 횟수: ${results.length + 1}`);
-  console.log(`평균: ${Math.round(mean * 1000) / 1000}ms`);
-  console.log(`표준편차: ${Math.round(stdDeviation * 1000) / 1000}ms`);
-  console.log(`첫번째 제외 평균: ${Math.round(meanWOFirst * 1000) / 1000}ms`);
-  console.log(`첫번째 제외 표준편차: ${Math.round(stdDeviationWOFirst * 1000) / 1000}ms`);
+  printMain(
+`시행 횟수: ${results.length + 1}
+평균: ${Math.round(mean * 1000) / 1000}ms
+표준편차: ${Math.round(stdDeviation * 1000) / 1000}ms
+첫번째 제외 평균: ${Math.round(meanWOFirst * 1000) / 1000}ms
+첫번째 제외 표준편차: ${Math.round(stdDeviationWOFirst * 1000) / 1000}ms`
+  );
 }
 
 async function i32AddWasm_v0() {
