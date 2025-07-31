@@ -4,7 +4,7 @@ WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실�
 ## 환경
 - i5-10400
 - 16GB RAM
-- Windows 11 Pro
+- Windows 11 Pro 24H2
 - Chrome 138.0.7204.169
 - Rust 1.90.0 nightly 0d9592026
 - wasm-bindgen 0.2.100
