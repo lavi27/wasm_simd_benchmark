@@ -1,5 +1,5 @@
 # WASM SIMD Benckmark
-WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실험하기 위한 리포지토리입니다.
+WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실험하기 위한 리포지토리입니다. [웹사이트](https://lavi27.github.io/wasm_simd_benchmark/)에서 직접 실행해볼 수 있습니다.
 
 ## 실행 결과
 ### 환경
