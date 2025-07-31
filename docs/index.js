@@ -1,4 +1,4 @@
-import init, * as wasm from "../pkg/wasm_simd.js";
+import init, * as wasm from "./wasm_simd.js";
 
 const I32AddRepeatCount = 100000000;
 const GrayscaleRepeatCount = 30000000;
