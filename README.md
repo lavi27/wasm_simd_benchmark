@@ -1,7 +1,8 @@
-## WASM SIMD Benckmark
+# WASM SIMD Benckmark
 WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실험하기 위한 리포지토리입니다.
 
-## 환경
+## 실행 결과
+### 환경
 - i5-10400
 - 16GB RAM
 - Windows 11 Pro 24H2
@@ -9,7 +10,6 @@ WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실�
 - Rust 1.90.0 nightly 0d9592026
 - wasm-bindgen 0.2.100
 
-## 결과
 ### 32bit Int Add
 ||WASM v0|WASM v1|WASM v2|WASM final|JS|
 |---:|---|---|---|---|---|
