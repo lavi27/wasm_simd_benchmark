@@ -1,0 +1,32 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_i32vec_free: (a: number, b: number) => void;
+export const i32vec_new: () => number;
+export const i32vec_ptr: (a: number) => number;
+export const i32vec_len: (a: number) => number;
+export const i32vec_capacity: (a: number) => number;
+export const i32vec_get: (a: number, b: number) => number;
+export const i32vec_set: (a: number, b: number, c: number) => void;
+export const i32vec_push: (a: number, b: number) => void;
+export const __wbg_u8vec_free: (a: number, b: number) => void;
+export const u8vec_new: () => number;
+export const u8vec_len: (a: number) => number;
+export const u8vec_get: (a: number, b: number) => number;
+export const u8vec_set: (a: number, b: number, c: number) => void;
+export const u8vec_push: (a: number, b: number) => void;
+export const i32_add_v0: (a: number, b: number, c: number, d: number) => [number, number];
+export const i32_add_v1: (a: number, b: number) => number;
+export const i32_add_v2: (a: number, b: number) => number;
+export const i32_add_final: (a: number, b: number) => number;
+export const image_grayscale_v0: (a: number) => number;
+export const image_grayscale_v1: (a: number) => number;
+export const image_grayscale_v2: (a: number) => number;
+export const image_grayscale_v3: (a: number) => number;
+export const image_grayscale_final: (a: number) => number;
+export const u8vec_ptr: (a: number) => number;
+export const u8vec_capacity: (a: number) => number;
+export const __wbindgen_export_0: WebAssembly.Table;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __wbindgen_start: () => void;
