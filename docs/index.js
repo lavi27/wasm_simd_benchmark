@@ -1,390 +1,230 @@
 import init, * as wasm from "./wasm_simd.js";
+import { Benchmark } from "./benchmark.js";
 
-const I32AddRepeatCount = 100000000;
-const GrayscaleRepeatCount = 30000000;
-const TrialCount = 10;
+const I32AddTestSettings = {
+  testOptions: [
+    {initArgs: {size: 100000}, iter: 100},
+    {initArgs: {size: 1000000}, iter: 50},
+    {initArgs: {size: 10000000}, iter: 20},
+    {initArgs: {size: 100000000}, iter: 10},
+  ]
+};
+
+const I32AddWasmV0Test = new Benchmark('I32Add Wasm V0',
+  ({size}) => {
+    const arr1 = Int32Array.from({length: size}, (_, i) => i);
+    const arr2 = Int32Array.from({length: size}, (_, i) => i);
+
+    return {arr1, arr2};
+  },
+  ({arr1, arr2}) => {
+    wasm.i32_add_v0(arr1, arr2);
+  }, I32AddTestSettings);
+
+function I32AddWasmInit({size}) {
+  const arr1 = new wasm.I32Vec();
+  const arr2 = new wasm.I32Vec();
+  for (let i = 0; i < size; i++) {
+    arr1.push(i);
+    arr2.push(i);
+  }
+
+  return {arr1, arr2};
+} 
+
+const I32AddWasmV1Test = new Benchmark('I32Add Wasm V1',
+  I32AddWasmInit,
+  ({arr1, arr2}) => {
+    const res = wasm.i32_add_v1(arr1, arr2);
+    res.free();
+  }, I32AddTestSettings);
+
+const I32AddWasmV2Test = new Benchmark('I32Add Wasm V2',
+  I32AddWasmInit,
+  ({arr1, arr2}) => {
+    const res = wasm.i32_add_v2(arr1, arr2);
+    res.free();
+  }, I32AddTestSettings);
+
+const I32AddWasmFinalTest = new Benchmark('I32Add Wasm Final',
+  I32AddWasmInit,
+  ({arr1, arr2}) => {
+    const res = wasm.i32_add_final(arr1, arr2);
+    res.free();
+  }, I32AddTestSettings);
+
+const I32AddJSTest = new Benchmark('I32Add JS',
+  ({size}) => {
+    let arr1 = Int32Array.from({length: size}, (_, i) => i);
+    let arr2 = Int32Array.from({length: size}, (_, i) => i);
+    let res = new Int32Array(size);
+
+    return {arr1, arr2, res}
+  },
+  ({arr1, arr2, res}) => {
+    for (let i=0; i<arr1.length; i++) {
+      res[i] = arr1[i] + arr2[i];
+    }
+  }, I32AddTestSettings);
+
+const GrayscaleTestSettings = {
+  testOptions: [
+    {initArgs: {size: 100000}, iter: 100},
+    {initArgs: {size: 1000000}, iter: 30},
+    {initArgs: {size: 10000000}, iter: 10},
+    {initArgs: {size: 100000000}, iter: 5},
+  ]
+};
+
+function grayscaleWasmInit({size}) {
+  let arr = new wasm.U8Vec();
+  for (let i = 0; i < size * 3; i++) {
+    arr.push(i % 255);
+  }
+
+  return arr
+}
+
+const GrayscaleWasmV0Test = new Benchmark('Grayscale Wasm V0',
+  grayscaleWasmInit,
+  (arr) => {
+    const res = wasm.image_grayscale_v0(arr);
+    res.free();
+  }, GrayscaleTestSettings);
+
+const GrayscaleWasmV1Test = new Benchmark('Grayscale Wasm V1',
+  grayscaleWasmInit,
+  (arr) => {
+    const res = wasm.image_grayscale_v1(arr);
+    res.free();
+  }, GrayscaleTestSettings);
+
+const GrayscaleWasmV2Test = new Benchmark('Grayscale Wasm V2',
+  grayscaleWasmInit,
+  (arr) => {
+    const res = wasm.image_grayscale_v2(arr);
+    res.free();
+  }, GrayscaleTestSettings);
+
+const GrayscaleWasmV3Test = new Benchmark('Grayscale Wasm V3',
+  grayscaleWasmInit,
+  (arr) => {
+    const res = wasm.image_grayscale_v3(arr);
+    res.free();
+  }, GrayscaleTestSettings);
+
+const GrayscaleWasmFinalTest = new Benchmark('Grayscale Wasm Final',
+  grayscaleWasmInit,
+  (arr) => {
+    const res = wasm.image_grayscale_final(arr);
+    res.free();
+  }, GrayscaleTestSettings);
+
+const GrayscaleJSTest = new Benchmark('Grayscale JS',
+  ({size}) => {
+    let arr = Uint8Array.from({length: size * 3}, (_, i) => i %255);
+    let res = new Uint8Array(size);
+
+    return {arr, res}
+  },
+  ({arr, res}) => {
+    for (let i=0; i<arr.length; i+=3) {
+      res[i] = (arr[i] * 55 + arr[i+1] *183 + arr[i+2] *18) >> 8;
+    }
+  }, GrayscaleTestSettings);
 
 let MainEl;
 
-function printMain(str) {
+function printMain(item) {
   return new Promise((resolve) => {
-    MainEl.value += str + "\n";
+    const itemName = item[0].name;
+    let resStr = itemName;
+    resStr += "\ncondition | time(ms)\n"
+    resStr += "-------------------------\n";
 
-    setTimeout(resolve, 0);
+    for (const i of item) {
+      resStr += `size:${i.option.initArgs.size} iter:${i.option.iter}`;
+      resStr += "  "
+      resStr += `${i.timeAvg}(±${i.timeStdDiv})`;
+      resStr += "\n"
+    }
+
+    MainEl.value += resStr + "\n";
+
+    const borderColor =
+      itemName.includes('Final') ? "#54a0ff"
+      : itemName.includes('Wasm') ? "#accfff" : "#FD7272";
+
+    if (itemName.includes('I32Add')) {
+      window.chart1.data.datasets.push({
+        label: item[0].name.substring(7),
+        data: item.map(i => i.timeAvg),
+        borderColor,
+      });
+      window.chart1.update();
+    } else {
+      window.chart2.data.datasets.push({
+        label: item[0].name.substring(10),
+        data: item.map(i => i.timeAvg),
+        borderColor,
+      });
+      window.chart2.update();
+    }
+
+    setTimeout(resolve, 100);
   })
 }
 
-
-
 window.onload = () => {
   MainEl = document.getElementsByTagName("textarea")[0];
+  const chart1El = document.getElementById('myChart1');
+  const chart2El = document.getElementById('myChart2');
+
+  const options = {
+    animation: {
+      duration: 0,
+    },
+    scales: {
+      y: {
+        type: 'logarithmic'
+      }
+    },
+    maintainAspectRatio: false,
+  };
+
+  window.chart1 = new Chart(chart1El, {
+    type: 'line',
+    data: {
+      labels: I32AddTestSettings.testOptions.map(i => `size:${i.initArgs.size} iter:${i.iter}`),
+      datasets: []
+    },
+    options,
+  });
+
+  window.chart2 = new Chart(chart2El, {
+    type: 'line',
+    data: {
+      labels: GrayscaleTestSettings.testOptions.map(i => `size:${i.initArgs.size} iter:${i.iter}`),
+      datasets: []
+    },
+    options
+  });
 }
 
 window.btnClick = test;
 
 async function test() {
-  await printMain("[i32 add wasm]");
-  await printMain("v0:");
-  await i32AddWasm_v0();
-  await printMain("v1:");
-  await i32AddWasm_v1();
-  await printMain("v2:");
-  await i32AddWasm_v2();
-  await printMain("final:");
-  await i32AddWasm_final();
-
-  await printMain("[i32 add js]");
-  i32AddJs();
-
-  await printMain("[image grayscale wasm]");
-  await printMain("v0:");
-  await grayscaleWasm_v0();
-  await printMain("v1:");
-  await grayscaleWasm_v1();
-  await printMain("v2:");
-  await grayscaleWasm_v2();
-  await printMain("v3:");
-  await grayscaleWasm_v3();
-  await printMain("final:");
-  await grayscaleWasm_final();
-
-  await printMain("[image grayscale js]");
-  grayscaleJs();
-}
-
-function printResults(results) {
-  let sum = 0;
-  let mean = 0;
-  let stdDeviation = 0;
-
-  for (const item of results) {
-    sum += item;
-  }
-  mean = sum / results.length;
-
-  let tmp0 = 0;
-  for (const item of results) {
-    tmp0 += (item - mean) ** 2;
-  }
-  stdDeviation = Math.sqrt(tmp0 / (results.length-1));
-
-  results.shift();
-  sum = 0;
-  let meanWOFirst = 0;
-  let stdDeviationWOFirst = 0;
-
-  for (const item of results) {
-    sum += item;
-  }
-  meanWOFirst = sum / results.length;
-
-  tmp0 = 0;
-  for (const item of results) {
-    tmp0 += (item - mean) ** 2;
-  }
-  stdDeviationWOFirst = Math.sqrt(tmp0 / (results.length-1));
-
-  printMain(
-`시행 횟수: ${results.length + 1}
-평균: ${Math.round(mean * 1000) / 1000}ms
-표준편차: ${Math.round(stdDeviation * 1000) / 1000}ms
-첫번째 제외 평균: ${Math.round(meanWOFirst * 1000) / 1000}ms
-첫번째 제외 표준편차: ${Math.round(stdDeviationWOFirst * 1000) / 1000}ms`
-  );
-}
-
-async function i32AddWasm_v0() {
   await init();
-  
-  let arr1 = Int32Array.from({length: I32AddRepeatCount}, (_, i) => i);
-  let arr2 = Int32Array.from({length: I32AddRepeatCount}, (_, i) => i);
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.i32_add_v0(arr1, arr2);
-    const end = performance.now();
-
-    results.push(end - start);
-  }
-
-  printResults(results);
-}
-
-async function i32AddWasm_v1() {
-  await init();
-  
-  let arr1 = new wasm.I32Vec();
-  let arr2 = new wasm.I32Vec();
-  for (let i = 0; i < I32AddRepeatCount; i++) {
-    arr1.push(i);
-    arr2.push(i);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.i32_add_v1(arr1, arr2);
-    const end = performance.now();
-
-    results.push(end - start);
-
-    res.free();
-  }
-
-  arr1.free();
-  arr2.free();
-
-  printResults(results);
-}
-
-async function i32AddWasm_v2() {
-  await init();
-  
-  let arr1 = new wasm.I32Vec();
-  let arr2 = new wasm.I32Vec();
-
-  for (let i = 0; i < I32AddRepeatCount; i++) {
-    arr1.push(i);
-    arr2.push(i);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.i32_add_v2(arr1, arr2);
-    const end = performance.now();
-
-    results.push(end - start);
-
-    res.free();
-  }
-
-  arr1.free();
-  arr2.free();
-
-  printResults(results);
-}
-
-async function i32AddWasm_final() {
-  await init();
-  
-  let arr1 = new wasm.I32Vec();
-  let arr2 = new wasm.I32Vec();
-  for (let i = 0; i < I32AddRepeatCount; i++) {
-    arr1.push(i);
-    arr2.push(i);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.i32_add_final(arr1, arr2);
-    const end = performance.now();
-
-    results.push(end - start);
-
-    res.free();
-  }
-
-  arr1.free();
-  arr2.free();
-
-  printResults(results);
-}
-
-async function i32AddWasm_v4() {
-  await init();
-  
-  let arr1 = new wasm.I32Vec();
-  let arr2 = new wasm.I32Vec();
-  for (let i = 0; i < I32AddRepeatCount; i++) {
-    arr1.push(i);
-    arr2.push(i);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.i32_add_v4(arr1, arr2);
-    const end = performance.now();
-
-    results.push(end - start);
-
-    res.free();
-  }
-
-  arr1.free();
-  arr2.free();
-
-  printResults(results);
-}
-
-function i32AddJs() {
-  let arr1 = Int32Array.from({length: I32AddRepeatCount}, (_, i) => i);
-  let arr2 = Int32Array.from({length: I32AddRepeatCount}, (_, i) => i);
-  let res = new Int32Array(I32AddRepeatCount);
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    for (let i=0; i<I32AddRepeatCount; i++) {
-      res[i] = arr1[i] + arr2[i];
-    }
-    const end = performance.now();
-
-    results.push(end-start);
-  }
-
-  printResults(results);
-}
-
-async function grayscaleWasm_v0() {
-  await init();
-  
-  let arr1 = new wasm.U8Vec();
-  for (let i = 0; i < GrayscaleRepeatCount; i++) {
-    arr1.push(i % 255);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.image_grayscale_v0(arr1);
-    const end = performance.now();
-
-    results.push(end-start);
-
-    res.free();
-  }
-
-  arr1.free();
-
-  printResults(results);
-}
-
-async function grayscaleWasm_v1() {
-  await init();
-  
-  let arr1 = new wasm.U8Vec();
-  for (let i = 0; i < GrayscaleRepeatCount; i++) {
-    arr1.push(i % 255);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.image_grayscale_v1(arr1);
-    const end = performance.now();
-
-    results.push(end-start);
-
-    res.free();
-  }
-
-  arr1.free();
-
-  printResults(results);
-}
-
-async function grayscaleWasm_v2() {
-  await init();
-  
-  let arr1 = new wasm.U8Vec();
-  for (let i = 0; i < GrayscaleRepeatCount; i++) {
-    arr1.push(i % 255);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.image_grayscale_v2(arr1);
-    const end = performance.now();
-
-    results.push(end-start);
-
-    res.free();
-  }
-
-  arr1.free();
-
-  printResults(results);
-}
-
-async function grayscaleWasm_v3() {
-  await init();
-  
-  let arr1 = new wasm.U8Vec();
-  for (let i = 0; i < GrayscaleRepeatCount; i++) {
-    arr1.push(i % 255);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.image_grayscale_v3(arr1);
-    const end = performance.now();
-
-    results.push(end-start);
-
-    res.free();
-  }
-
-  arr1.free();
-
-  printResults(results);
-}
-
-async function grayscaleWasm_final() {
-  await init();
-  
-  let arr1 = new wasm.U8Vec();
-  for (let i = 0; i < GrayscaleRepeatCount; i++) {
-    arr1.push(i % 255);
-  }
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    const res = wasm.image_grayscale_final(arr1);
-    const end = performance.now();
-
-    results.push(end-start);
-
-    res.free();
-  }
-
-  arr1.free();  
-
-  printResults(results);
-}
-
-function grayscaleJs() {
-  let arr1 = Uint8Array.from({length: GrayscaleRepeatCount}, (_, i) => i %255);
-  let res = new Uint8Array(GrayscaleRepeatCount / 3);
-
-  let results = [];
-
-  for (let i = 0; i<TrialCount; i++) {
-    const start = performance.now();
-    for (let i=0; i<GrayscaleRepeatCount; i+=3) {
-      res[i] = (arr1[i] * 55 + arr1[i+1] *183 + arr1[i+2] *18) >> 8;
-    }
-    const end = performance.now();
-
-    results.push(end-start);
-  }
-
-  printResults(results);
+  await printMain(I32AddWasmV0Test.run());
+  await printMain(I32AddWasmV1Test.run());
+  await printMain(I32AddWasmV2Test.run());
+  await printMain(I32AddWasmFinalTest.run());
+  await printMain(I32AddJSTest.run());
+
+  await printMain(GrayscaleWasmV0Test.run());
+  await printMain(GrayscaleWasmV1Test.run());
+  await printMain(GrayscaleWasmV2Test.run());
+  await printMain(GrayscaleWasmV3Test.run());
+  await printMain(GrayscaleWasmFinalTest.run());
+  await printMain(GrayscaleJSTest.run());
 }
