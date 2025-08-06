@@ -135,6 +135,23 @@ const GrayscaleJSTest = new Benchmark('Grayscale JS',
 
 let MainEl;
 
+const ColorScheme = [
+  '#cc3333', // 빨강 (hsl(0,70%,50%))
+  '#cc8833', // 주황 (hsl(30,70%,50%))
+  '#cccc33', // 노랑 (hsl(60,70%,50%))
+  '#33cc33', // 초록 (hsl(120,70%,50%))
+  '#3333cc', // 파랑 (hsl(240,70%,50%))
+  '#cc3333', // 빨강 (hsl(0,70%,50%))
+  '#cc8833', // 주황 (hsl(30,70%,50%))
+  '#cccc33', // 노랑 (hsl(60,70%,50%))
+  '#33cc33', // 초록 (hsl(120,70%,50%))
+  '#3333cc', // 파랑 (hsl(240,70%,50%))
+  '#6633cc'  // 보라 (hsl(270,70%,50%))
+];
+
+let colorCounter = 0;
+
+
 function printMain(item) {
   return new Promise((resolve) => {
     const itemName = item[0].name;
@@ -151,9 +168,7 @@ function printMain(item) {
 
     MainEl.value += resStr + "\n";
 
-    const borderColor =
-      itemName.includes('Final') ? "#54a0ff"
-      : itemName.includes('Wasm') ? "#accfff" : "#FD7272";
+    const borderColor = ColorScheme[colorCounter++];
 
     if (itemName.includes('I32Add')) {
       window.chart1.data.datasets.push({
