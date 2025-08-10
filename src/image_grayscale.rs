@@ -1,4 +1,9 @@
 use core::arch::wasm32::*;
+use rayon::{
+    current_num_threads,
+    iter::{IntoParallelIterator, ParallelIterator},
+};
+use std::sync::atomic::{AtomicPtr, Ordering};
 use wasm_bindgen::prelude::*;
 
 use crate::{utils::*, wasm_vec::*};
@@ -235,7 +240,7 @@ pub fn image_grayscale_v3(data: &U8Vec) -> U8Vec {
             let sum = u16x8_add(sum, b_vec);
 
             let sum = u16x8_shr(sum, 8);
-            let sum = i8x16_narrow_i16x8(sum, u16x8_splat(0));
+            let sum = u8x16_narrow_i16x8(sum, u16x8_splat(0));
 
             v128_store64_lane::<0>(sum, res_ptr.add(res_len) as *mut u64);
             res_len += 8;
@@ -253,7 +258,7 @@ pub fn image_grayscale_v3(data: &U8Vec) -> U8Vec {
 }
 
 #[wasm_bindgen]
-pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
+pub fn image_grayscale_v4(data: &U8Vec) -> U8Vec {
     let mut res: Vec<u8> = Vec::with_capacity(data.len() / 3);
     let data = &data.vec;
 
@@ -302,7 +307,7 @@ pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
             let sum = u16x8_add(sum, b_vec);
 
             let sum = u16x8_shr(sum, 8);
-            let sum = i8x16_narrow_i16x8(sum, u16x8_splat(0));
+            let sum = u8x16_narrow_i16x8(sum, u16x8_splat(0));
 
             v128_store64_lane::<0>(sum, res_ptr.add(res_len) as *mut u64);
             res_len += 8;
@@ -312,6 +317,84 @@ pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
     }
 
     for i in ((res.len() * 3)..data.len()).step_by(3) {
+        let tmp = (data[i] as u16) * 18 + (data[i + 1] as u16) * 183 + (data[i + 2] as u16) * 55;
+        res.push((tmp >> 8) as u8);
+    }
+
+    U8Vec::from_vec(res)
+}
+
+#[wasm_bindgen]
+pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
+    let mut res: Vec<u8> = Vec::with_capacity(data.len() / 3);
+    let data = &data.vec;
+
+    let thread_cnt = current_num_threads();
+    let thr_unit_size = data.len() / thread_cnt / (8 * 3) * (8 * 3); // 한 스레드가 담당하는 범위는 8*3의 배수.
+    let remainder_data_idx = thr_unit_size * thread_cnt - 1;
+
+    unsafe {
+        let data_ptr = AtomicPtr::new(data.as_ptr() as *mut u8);
+        let res_ptr = AtomicPtr::new(res.as_mut_ptr());
+        res.set_len(thr_unit_size * thread_cnt / 3);
+
+        (0..thread_cnt).into_par_iter().for_each(|thr_id| unsafe {
+            let start = thr_id * thr_unit_size;
+            let end = start + thr_unit_size;
+            let data_ptr = data_ptr.load(Ordering::Relaxed);
+            let res_ptr = res_ptr.load(Ordering::Relaxed);
+
+            let mut res_idx = start / 3;
+
+            for i in (start..end).step_by(8 * 3) {
+                let r_vec = u16x8_extend_u8(
+                    *data_ptr.add(i),
+                    *data_ptr.add(i + 3),
+                    *data_ptr.add(i + 6),
+                    *data_ptr.add(i + 9),
+                    *data_ptr.add(i + 12),
+                    *data_ptr.add(i + 15),
+                    *data_ptr.add(i + 18),
+                    *data_ptr.add(i + 21),
+                );
+                let g_vec = u16x8_extend_u8(
+                    *data_ptr.add(i + 1),
+                    *data_ptr.add(i + 4),
+                    *data_ptr.add(i + 7),
+                    *data_ptr.add(i + 10),
+                    *data_ptr.add(i + 13),
+                    *data_ptr.add(i + 16),
+                    *data_ptr.add(i + 19),
+                    *data_ptr.add(i + 22),
+                );
+                let b_vec = u16x8_extend_u8(
+                    *data_ptr.add(i + 2),
+                    *data_ptr.add(i + 5),
+                    *data_ptr.add(i + 8),
+                    *data_ptr.add(i + 11),
+                    *data_ptr.add(i + 14),
+                    *data_ptr.add(i + 17),
+                    *data_ptr.add(i + 20),
+                    *data_ptr.add(i + 23),
+                );
+
+                let b_vec = u16x8_mul(b_vec, u16x8_splat(18));
+                let g_vec = u16x8_mul(g_vec, u16x8_splat(183));
+                let r_vec = u16x8_mul(r_vec, u16x8_splat(55));
+
+                let sum = u16x8_add(r_vec, g_vec);
+                let sum = u16x8_add(sum, b_vec);
+
+                let sum = u16x8_shr(sum, 8);
+                let sum = u8x16_narrow_i16x8(sum, u16x8_splat(0));
+
+                v128_store64_lane::<0>(sum, res_ptr.add(res_idx) as *mut u64);
+                res_idx += 8;
+            }
+        });
+    }
+
+    for i in (remainder_data_idx..(data.len() - 1)).step_by(3) {
         let tmp = (data[i] as u16) * 18 + (data[i + 1] as u16) * 183 + (data[i + 2] as u16) * 55;
         res.push((tmp >> 8) as u8);
     }
