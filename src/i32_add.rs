@@ -16,7 +16,7 @@ pub fn i32_add_v0(a: Vec<i32>, b: Vec<i32>) -> Vec<i32> {
     let mut res: Vec<i32> = Vec::with_capacity(a.len());
 
     unsafe {
-        for i in (0..a.len()).step_by(4) {
+        for i in step_chunks(0..a.len(), 4) {
             let vec_a = i32x4(a[i], a[i + 1], a[i + 2], a[i + 3]);
             let vec_b = i32x4(b[i], b[i + 1], b[i + 2], b[i + 3]);
 
@@ -47,7 +47,7 @@ pub fn i32_add_v1(a: &I32Vec, b: &I32Vec) -> I32Vec {
     let mut res: Vec<i32> = Vec::with_capacity(a.len());
 
     unsafe {
-        for i in (0..a.len()).step_by(4) {
+        for i in step_chunks(0..a.len(), 4) {
             let vec_a = i32x4(a[i], a[i + 1], a[i + 2], a[i + 3]);
             let vec_b = i32x4(b[i], b[i + 1], b[i + 2], b[i + 3]);
 
@@ -80,7 +80,7 @@ pub fn i32_add_v2(a: &I32Vec, b: &I32Vec) -> I32Vec {
     unsafe {
         let vecs = i32_vec_2_wrap(a, b);
 
-        for i in (0..vecs.len()).step_by(2) {
+        for i in step_chunks(0..vecs.len(), 2) {
             let vec_res = i32x4_add(vecs[i], vecs[i + 1]);
 
             res.extend_from_slice(&[

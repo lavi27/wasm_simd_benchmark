@@ -17,7 +17,7 @@ pub fn image_grayscale_v0(data: &U8Vec) -> U8Vec {
         let res_ptr = res.as_mut_ptr();
         let mut res_len = 0;
 
-        for i in (0..data.len()).step_by(4 * 3) {
+        for i in step_chunks(0..data.len(), 4 * 3) {
             let r_vec = f32x4_convert_u8(data[i], data[i + 3], data[i + 6], data[i + 9]);
             let g_vec = f32x4_convert_u8(data[i + 1], data[i + 4], data[i + 7], data[i + 10]);
             let b_vec = f32x4_convert_u8(data[i + 2], data[i + 5], data[i + 8], data[i + 11]);
@@ -37,7 +37,7 @@ pub fn image_grayscale_v0(data: &U8Vec) -> U8Vec {
         res.set_len(res_len);
     }
 
-    for i in ((res.len() * 3)..data.len()).step_by(3) {
+    for i in step_chunks((res.len() * 3)..data.len(), 3) {
         let item_res = (data[i] as f32 * 0.2126)
             + (data[i + 1] as f32 * 0.7152)
             + (data[i + 2] as f32 * 0.0722);
@@ -57,7 +57,7 @@ pub fn image_grayscale_v1(data: &U8Vec) -> U8Vec {
         let res_ptr = res.as_mut_ptr();
         let mut res_len = 0;
 
-        for i in (0..data.len()).step_by(4 * 3) {
+        for i in step_chunks(0..data.len(), 4 * 3) {
             let r_vec = f32x4_convert_u8_byte_align(data[i], data[i + 3], data[i + 6], data[i + 9]);
             let g_vec =
                 f32x4_convert_u8_byte_align(data[i + 1], data[i + 4], data[i + 7], data[i + 10]);
@@ -79,7 +79,7 @@ pub fn image_grayscale_v1(data: &U8Vec) -> U8Vec {
         res.set_len(res_len);
     }
 
-    for i in ((res.len() * 3)..data.len()).step_by(3) {
+    for i in step_chunks((res.len() * 3)..data.len(), 3) {
         let item_res = (data[i] as f32 * 0.2126)
             + (data[i + 1] as f32 * 0.7152)
             + (data[i + 2] as f32 * 0.0722);
@@ -148,7 +148,7 @@ pub fn image_grayscale_v2(data: &U8Vec) -> U8Vec {
         let res_ptr = res.as_mut_ptr();
         let mut res_len = 0;
 
-        for i in (0..data.len()).step_by(4 * 3) {
+        for i in step_chunks(0..data.len(), 4 * 3) {
             let r_vec = f32x4(
                 GRAYSCALE_R[data[i] as usize],
                 GRAYSCALE_R[data[i + 3] as usize],
@@ -180,7 +180,7 @@ pub fn image_grayscale_v2(data: &U8Vec) -> U8Vec {
         res.set_len(res_len);
     }
 
-    for i in ((res.len() * 3)..data.len()).step_by(3) {
+    for i in step_chunks((res.len() * 3)..data.len(), 3) {
         let item_res = (data[i] as f32 * 0.2126)
             + (data[i + 1] as f32 * 0.7152)
             + (data[i + 2] as f32 * 0.0722);
@@ -200,7 +200,7 @@ pub fn image_grayscale_v3(data: &U8Vec) -> U8Vec {
         let res_ptr = res.as_mut_ptr();
         let mut res_len = 0;
 
-        for i in (0..data.len()).step_by(8 * 3) {
+        for i in step_chunks(0..data.len(), 8 * 3) {
             let r_vec = u16x8_extend_u8(
                 data[i],
                 data[i + 3],
@@ -249,7 +249,7 @@ pub fn image_grayscale_v3(data: &U8Vec) -> U8Vec {
         res.set_len(res_len);
     }
 
-    for i in ((res.len() * 3)..data.len()).step_by(3) {
+    for i in step_chunks((res.len() * 3)..data.len(), 3) {
         let tmp = (data[i] as u16) * 18 + (data[i + 1] as u16) * 183 + (data[i + 2] as u16) * 55;
         res.push((tmp >> 8) as u8);
     }
@@ -263,11 +263,14 @@ pub fn image_grayscale_v4(data: &U8Vec) -> U8Vec {
     let data = &data.vec;
 
     unsafe {
+        res.set_len(res.capacity());
+
         let data_ptr = data.as_ptr();
         let res_ptr = res.as_mut_ptr();
+
         let mut res_len = 0;
 
-        for i in (0..data.len()).step_by(8 * 3) {
+        for i in step_chunks(0..data.len(), 8 * 3) {
             let r_vec = u16x8_extend_u8(
                 *data_ptr.add(i),
                 *data_ptr.add(i + 3),
@@ -312,13 +315,15 @@ pub fn image_grayscale_v4(data: &U8Vec) -> U8Vec {
             v128_store64_lane::<0>(sum, res_ptr.add(res_len) as *mut u64);
             res_len += 8;
         }
-
-        res.set_len(res_len);
     }
 
-    for i in ((res.len() * 3)..data.len()).step_by(3) {
+    let remainder_data_idx = data.len() / (8 * 3) * (8 * 3) - 1;
+    let mut remainder_res_idx = data.len() / (8 * 3) * 8 - 1;
+
+    for i in step_chunks(remainder_data_idx..data.len(), 3) {
         let tmp = (data[i] as u16) * 18 + (data[i + 1] as u16) * 183 + (data[i + 2] as u16) * 55;
-        res.push((tmp >> 8) as u8);
+        res[remainder_res_idx] = (tmp >> 8) as u8;
+        remainder_res_idx += 1;
     }
 
     U8Vec::from_vec(res)
@@ -336,7 +341,7 @@ pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
     unsafe {
         let data_ptr = AtomicPtr::new(data.as_ptr() as *mut u8);
         let res_ptr = AtomicPtr::new(res.as_mut_ptr());
-        res.set_len(thr_unit_size * thread_cnt / 3);
+        res.set_len(res.capacity());
 
         (0..thread_cnt).into_par_iter().for_each(|thr_id| unsafe {
             let start = thr_id * thr_unit_size;
@@ -346,7 +351,7 @@ pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
 
             let mut res_idx = start / 3;
 
-            for i in (start..end).step_by(8 * 3) {
+            for i in step_chunks(start..end, 8 * 3) {
                 let r_vec = u16x8_extend_u8(
                     *data_ptr.add(i),
                     *data_ptr.add(i + 3),
@@ -394,9 +399,12 @@ pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
         });
     }
 
-    for i in (remainder_data_idx..(data.len() - 1)).step_by(3) {
+    let mut remainder_res_idx = thr_unit_size * thread_cnt / 3 - 1;
+
+    for i in step_chunks(remainder_data_idx..data.len(), 3) {
         let tmp = (data[i] as u16) * 18 + (data[i + 1] as u16) * 183 + (data[i + 2] as u16) * 55;
-        res.push((tmp >> 8) as u8);
+        res[remainder_res_idx] = (tmp >> 8) as u8;
+        remainder_res_idx += 1;
     }
 
     U8Vec::from_vec(res)

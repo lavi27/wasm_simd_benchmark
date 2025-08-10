@@ -1,4 +1,5 @@
 use core::arch::wasm32::*;
+use std::{iter::StepBy, ops::Range};
 
 pub fn i32_vec_wrap(data: &[i32]) -> Vec<v128> {
     let len = data.len() / 4;
@@ -26,7 +27,7 @@ pub fn i32_vec_2_wrap(a: &[i32], b: &[i32]) -> Vec<v128> {
     let ptr_a = a.as_ptr();
     let ptr_b = b.as_ptr();
 
-    for i in (0..arr_len).step_by(4) {
+    for i in (0..(arr_len - 3)).step_by(4) {
         unsafe {
             res.push(i32x4(
                 *ptr_a.add(i),
@@ -118,4 +119,8 @@ pub fn u8x4_convert_f32x4_shuffle(vec: v128) -> v128 {
 
 pub fn u16x8_extend_u8(a0: u8, a1: u8, a2: u8, a3: u8, a4: u8, a5: u8, a6: u8, a7: u8) -> v128 {
     unsafe { u8x16(a0, 0, a1, 0, a2, 0, a3, 0, a4, 0, a5, 0, a6, 0, a7, 0) }
+}
+
+pub fn step_chunks(range: Range<usize>, chunk_size: usize) -> StepBy<Range<usize>> {
+    (range.start..(range.end - chunk_size + 1)).step_by(chunk_size)
 }
