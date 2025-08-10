@@ -46,10 +46,10 @@ const I32AddWasmV2Test = new Benchmark('I32Add Wasm V2',
     res.free();
   }, I32AddTestSettings);
 
-const I32AddWasmFinalTest = new Benchmark('I32Add Wasm Final',
+const I32AddWasmV3Test = new Benchmark('I32Add Wasm Final',
   I32AddWasmInit,
   ({arr1, arr2}) => {
-    const res = wasm.i32_add_final(arr1, arr2);
+    const res = wasm.i32_add_v3(arr1, arr2);
     res.free();
   }, I32AddTestSettings);
 
@@ -113,10 +113,10 @@ const GrayscaleWasmV3Test = new Benchmark('Grayscale Wasm V3',
     res.free();
   }, GrayscaleTestSettings);
 
-const GrayscaleWasmFinalTest = new Benchmark('Grayscale Wasm Final',
+const GrayscaleWasmV4Test = new Benchmark('Grayscale Wasm Final',
   grayscaleWasmInit,
   (arr) => {
-    const res = wasm.image_grayscale_final(arr);
+    const res = wasm.image_grayscale_v4(arr);
     res.free();
   }, GrayscaleTestSettings);
 
@@ -190,7 +190,10 @@ function printMain(item) {
   })
 }
 
-window.onload = () => {
+window.onload = async () => {
+  await init();
+  // await wasm.initThreadPool(navigator.hardwareConcurrency);
+
   MainEl = document.getElementsByTagName("textarea")[0];
   const chart1El = document.getElementById('myChart1');
   const chart2El = document.getElementById('myChart2');
@@ -229,17 +232,16 @@ window.onload = () => {
 window.btnClick = test;
 
 async function test() {
-  await init();
   await printMain(I32AddWasmV0Test.run());
   await printMain(I32AddWasmV1Test.run());
   await printMain(I32AddWasmV2Test.run());
-  await printMain(I32AddWasmFinalTest.run());
+  await printMain(I32AddWasmV3Test.run());
   await printMain(I32AddJSTest.run());
 
   await printMain(GrayscaleWasmV0Test.run());
   await printMain(GrayscaleWasmV1Test.run());
   await printMain(GrayscaleWasmV2Test.run());
   await printMain(GrayscaleWasmV3Test.run());
-  await printMain(GrayscaleWasmFinalTest.run());
+  await printMain(GrayscaleWasmV4Test.run());
   await printMain(GrayscaleJSTest.run());
 }

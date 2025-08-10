@@ -50,6 +50,8 @@ export class Benchmark {
     for (const opt of this.#settings.testOptions) {
       const initRet = this.#initFn(opt.initArgs);
 
+      console.log(opt);
+
       let times = [];
       let memorys = [];
 
