@@ -1,5 +1,4 @@
 use core::arch::wasm32::*;
-use core::ptr::*;
 
 pub fn i32_vec_wrap(data: &[i32]) -> Vec<v128> {
     let len = data.len() / 4;
