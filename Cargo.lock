@@ -216,6 +216,7 @@ dependencies = [
  "rayon",
  "wasm-bindgen",
  "wasm-bindgen-rayon",
+ "web-sys",
 ]
 
 [[package]]
