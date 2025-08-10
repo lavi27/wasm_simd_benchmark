@@ -1,4 +1,3 @@
-use core::{mem, slice};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
