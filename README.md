@@ -11,7 +11,7 @@ WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실�
 - wasm-bindgen 0.2.100
 
 ### 32bit Int Add
-![img](~@source/images/I32_Add_Result.png)
+![img](/images/I32_Add_Result.png)
 
 |(ms)|WASM v0|WASM v1|WASM v2|WASM v3|WASM final|JS|
 |---:|---|---|---|---|---|---|
@@ -21,7 +21,7 @@ WASM 플랫폼에서의 SIMD 명령어를 응용하여 성능 최적화를 실�
 |size:100000000 iter:10|365.695(±28.695)|165.869(±4.213)|312.8(±29.158)|72.802(±1.098)|59.974(±0.789)|244.873(±11.564)|
 
 ### Image Grayscale
-![img](~@source/images/Image_Grayscale_Result.png)
+![img](/images/Image_Grayscale_Result.png)
 
 |(ms)|WASM v0|WASM v1|WASM v2|WASM v3|WASM v4|WASM final|JS|
 |---:|---|---|---|---|---|---|---|
