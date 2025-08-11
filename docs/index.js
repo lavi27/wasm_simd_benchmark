@@ -2,7 +2,7 @@ import init, * as wasm from "./wasm_simd.js";
 import { Benchmark } from "./benchmark.js";
 import { wait } from "./utils.js";
 
-const EnableThreading = true;
+const EnableThreading = false;
 
 const I32AddTestSettings = {
   testOptions: [
