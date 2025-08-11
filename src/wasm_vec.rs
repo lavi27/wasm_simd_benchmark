@@ -50,7 +50,7 @@ impl I32Vec {
 impl Drop for I32Vec {
     fn drop(&mut self) {
         self.vec.clear();
-        self.vec.shrink_to(0);
+        self.vec.shrink_to_fit();
     }
 }
 
@@ -104,6 +104,6 @@ impl U8Vec {
 impl Drop for U8Vec {
     fn drop(&mut self) {
         self.vec.clear();
-        self.vec.shrink_to(0);
+        self.vec.shrink_to_fit();
     }
 }
