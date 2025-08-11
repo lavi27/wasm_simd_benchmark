@@ -2,6 +2,8 @@ import init, * as wasm from "./wasm_simd.js";
 import { Benchmark } from "./benchmark.js";
 import { wait } from "./utils.js";
 
+const EnableThreading = true;
+
 const I32AddTestSettings = {
   testOptions: [
     {initArgs: {size: 100000}, iter: 100},
@@ -190,7 +192,7 @@ async function printMain(item) {
 
   MainEl.value += resStr + "\n";
 
-  const borderColor = ColorScheme[colorCounter++];
+  const borderColor = ColorScheme[colorCounter++] ?? "#111";
 
   if (itemName.includes('I32Add')) {
     window.chart1.data.datasets.push({
@@ -213,7 +215,7 @@ async function printMain(item) {
 
 window.onload = async () => {
   await init();
-  // await wasm.initThreadPool(navigator.hardwareConcurrency);
+  if (EnableThreading) { await wasm.initThreadPool(navigator.hardwareConcurrency) };
 
   MainEl = document.getElementsByTagName("textarea")[0];
   const chart1El = document.getElementById('myChart1');
@@ -257,7 +259,7 @@ async function test() {
   await printMain(await I32AddWasmV1Test.run());
   await printMain(await I32AddWasmV2Test.run());
   await printMain(await I32AddWasmV3Test.run());
-  // await printMain(I32AddWasmFinalTest.run());
+  if (EnableThreading) { await printMain(await I32AddWasmFinalTest.run()) };
   await printMain(await I32AddJSTest.run());
 
   await printMain(await GrayscaleWasmV0Test.run());
@@ -265,6 +267,6 @@ async function test() {
   await printMain(await GrayscaleWasmV2Test.run());
   await printMain(await GrayscaleWasmV3Test.run());
   await printMain(await GrayscaleWasmV4Test.run());
-  // await printMain(GrayscaleWasmFinalTest.run());
+  if (EnableThreading) { await printMain(await GrayscaleWasmFinalTest.run()) };
   await printMain(await GrayscaleJSTest.run());
 }
