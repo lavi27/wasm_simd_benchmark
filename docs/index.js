@@ -1,5 +1,6 @@
 import init, * as wasm from "./wasm_simd.js";
 import { Benchmark } from "./benchmark.js";
+import { wait } from "./utils.js";
 
 const I32AddTestSettings = {
   testOptions: [
@@ -15,7 +16,7 @@ const I32AddWasmV0Test = new Benchmark('I32Add Wasm V0',
     const arr1 = Int32Array.from({length: size}, (_, i) => i);
     const arr2 = Int32Array.from({length: size}, (_, i) => i);
 
-    return {arr1, arr2};
+    return {args: {arr1, arr2}};
   },
   ({arr1, arr2}) => {
     wasm.i32_add_v0(arr1, arr2);
@@ -29,39 +30,50 @@ function I32AddWasmInit({size}) {
     arr2.push(i);
   }
 
-  return {arr1, arr2};
+  return {
+    args: {arr1, arr2},
+    cleanupFn: () => {arr1.free(); arr2.free();}
+  };
 } 
 
 const I32AddWasmV1Test = new Benchmark('I32Add Wasm V1',
   I32AddWasmInit,
   ({arr1, arr2}) => {
     const res = wasm.i32_add_v1(arr1, arr2);
-    res.free();
+    return () => {res.free()};
   }, I32AddTestSettings);
 
 const I32AddWasmV2Test = new Benchmark('I32Add Wasm V2',
   I32AddWasmInit,
   ({arr1, arr2}) => {
     const res = wasm.i32_add_v2(arr1, arr2);
-    res.free();
+    return () => {res.free()};
   }, I32AddTestSettings);
 
-const I32AddWasmV3Test = new Benchmark('I32Add Wasm Final',
+const I32AddWasmV3Test = new Benchmark('I32Add Wasm V3',
   I32AddWasmInit,
   ({arr1, arr2}) => {
     const res = wasm.i32_add_v3(arr1, arr2);
-    res.free();
+    return () => {res.free()};
+  }, I32AddTestSettings);
+
+const I32AddWasmFinalTest = new Benchmark('I32Add Wasm Final',
+  I32AddWasmInit,
+  ({arr1, arr2}) => {
+    const res = wasm.i32_add_final(arr1, arr2);
+    return () => {res.free()};
   }, I32AddTestSettings);
 
 const I32AddJSTest = new Benchmark('I32Add JS',
   ({size}) => {
     let arr1 = Int32Array.from({length: size}, (_, i) => i);
     let arr2 = Int32Array.from({length: size}, (_, i) => i);
-    let res = new Int32Array(size);
 
-    return {arr1, arr2, res}
+    return {args: {arr1, arr2}}
   },
-  ({arr1, arr2, res}) => {
+  ({arr1, arr2}) => {
+    let res = new Int32Array(arr1.length);
+
     for (let i=0; i<arr1.length; i++) {
       res[i] = arr1[i] + arr2[i];
     }
@@ -82,52 +94,63 @@ function grayscaleWasmInit({size}) {
     arr.push(i % 255);
   }
 
-  return arr
+  return {
+    args: arr,
+    cleanupFn: () => {arr.free()}
+  }
 }
 
 const GrayscaleWasmV0Test = new Benchmark('Grayscale Wasm V0',
   grayscaleWasmInit,
   (arr) => {
     const res = wasm.image_grayscale_v0(arr);
-    res.free();
+    return () => {res.free()};
   }, GrayscaleTestSettings);
 
 const GrayscaleWasmV1Test = new Benchmark('Grayscale Wasm V1',
   grayscaleWasmInit,
   (arr) => {
     const res = wasm.image_grayscale_v1(arr);
-    res.free();
+    return () => {res.free()};
   }, GrayscaleTestSettings);
 
 const GrayscaleWasmV2Test = new Benchmark('Grayscale Wasm V2',
   grayscaleWasmInit,
   (arr) => {
     const res = wasm.image_grayscale_v2(arr);
-    res.free();
+    return () => {res.free()};
   }, GrayscaleTestSettings);
 
 const GrayscaleWasmV3Test = new Benchmark('Grayscale Wasm V3',
   grayscaleWasmInit,
   (arr) => {
     const res = wasm.image_grayscale_v3(arr);
-    res.free();
+    return () => {res.free()};
   }, GrayscaleTestSettings);
 
-const GrayscaleWasmV4Test = new Benchmark('Grayscale Wasm Final',
+const GrayscaleWasmV4Test = new Benchmark('Grayscale Wasm V4',
   grayscaleWasmInit,
   (arr) => {
     const res = wasm.image_grayscale_v4(arr);
-    res.free();
+    return () => {res.free()};
+  }, GrayscaleTestSettings);
+
+const GrayscaleWasmFinalTest = new Benchmark('Grayscale Wasm Final',
+  grayscaleWasmInit,
+  (arr) => {
+    const res = wasm.image_grayscale_final(arr);
+    return () => {res.free()};
   }, GrayscaleTestSettings);
 
 const GrayscaleJSTest = new Benchmark('Grayscale JS',
   ({size}) => {
     let arr = Uint8Array.from({length: size * 3}, (_, i) => i %255);
-    let res = new Uint8Array(size);
 
-    return {arr, res}
+    return {args: arr}
   },
-  ({arr, res}) => {
+  (arr) => {
+    let res = new Uint8Array(arr.length / 3);
+
     for (let i=0; i<arr.length; i+=3) {
       res[i] = (arr[i] * 55 + arr[i+1] *183 + arr[i+2] *18) >> 8;
     }
@@ -152,42 +175,40 @@ const ColorScheme = [
 let colorCounter = 0;
 
 
-function printMain(item) {
-  return new Promise((resolve) => {
-    const itemName = item[0].name;
-    let resStr = itemName;
-    resStr += "\ncondition | time(ms)\n"
-    resStr += "-------------------------\n";
+async function printMain(item) {
+  const itemName = item[0].name;
+  let resStr = itemName;
+  resStr += "\ncondition | time(ms)\n"
+  resStr += "-------------------------\n";
 
-    for (const i of item) {
-      resStr += `size:${i.option.initArgs.size} iter:${i.option.iter}`;
-      resStr += "  "
-      resStr += `${i.timeAvg}(±${i.timeStdDiv})`;
-      resStr += "\n"
-    }
+  for (const i of item) {
+    resStr += `size:${i.option.initArgs.size} iter:${i.option.iter}`;
+    resStr += "  "
+    resStr += `${i.timeAvg}(±${i.timeStdDiv})`;
+    resStr += "\n"
+  }
 
-    MainEl.value += resStr + "\n";
+  MainEl.value += resStr + "\n";
 
-    const borderColor = ColorScheme[colorCounter++];
+  const borderColor = ColorScheme[colorCounter++];
 
-    if (itemName.includes('I32Add')) {
-      window.chart1.data.datasets.push({
-        label: item[0].name.substring(7),
-        data: item.map(i => i.timeAvg),
-        borderColor,
-      });
-      window.chart1.update();
-    } else {
-      window.chart2.data.datasets.push({
-        label: item[0].name.substring(10),
-        data: item.map(i => i.timeAvg),
-        borderColor,
-      });
-      window.chart2.update();
-    }
+  if (itemName.includes('I32Add')) {
+    window.chart1.data.datasets.push({
+      label: item[0].name.substring(7),
+      data: item.map(i => i.timeAvg),
+      borderColor,
+    });
+    window.chart1.update();
+  } else {
+    window.chart2.data.datasets.push({
+      label: item[0].name.substring(10),
+      data: item.map(i => i.timeAvg),
+      borderColor,
+    });
+    window.chart2.update();
+  }
 
-    setTimeout(resolve, 100);
-  })
+  await wait(100);
 }
 
 window.onload = async () => {
@@ -232,16 +253,18 @@ window.onload = async () => {
 window.btnClick = test;
 
 async function test() {
-  await printMain(I32AddWasmV0Test.run());
-  await printMain(I32AddWasmV1Test.run());
-  await printMain(I32AddWasmV2Test.run());
-  await printMain(I32AddWasmV3Test.run());
-  await printMain(I32AddJSTest.run());
+  await printMain(await I32AddWasmV0Test.run());
+  await printMain(await I32AddWasmV1Test.run());
+  await printMain(await I32AddWasmV2Test.run());
+  await printMain(await I32AddWasmV3Test.run());
+  // await printMain(I32AddWasmFinalTest.run());
+  await printMain(await I32AddJSTest.run());
 
-  await printMain(GrayscaleWasmV0Test.run());
-  await printMain(GrayscaleWasmV1Test.run());
-  await printMain(GrayscaleWasmV2Test.run());
-  await printMain(GrayscaleWasmV3Test.run());
-  await printMain(GrayscaleWasmV4Test.run());
-  await printMain(GrayscaleJSTest.run());
+  await printMain(await GrayscaleWasmV0Test.run());
+  await printMain(await GrayscaleWasmV1Test.run());
+  await printMain(await GrayscaleWasmV2Test.run());
+  await printMain(await GrayscaleWasmV3Test.run());
+  await printMain(await GrayscaleWasmV4Test.run());
+  // await printMain(GrayscaleWasmFinalTest.run());
+  await printMain(await GrayscaleJSTest.run());
 }

@@ -1,3 +1,5 @@
+import { wait } from "./utils.js";
+
 function getAvg(items) {
     let sum = 0;
 
@@ -31,8 +33,8 @@ export class Benchmark {
 
   /**
    * @param {string} name 
-   * @param {(args: Object) => any} initFn  
-   * @param {(initRet: any) => any} mainFn 
+   * @param {(args: Object) => {args: Object, cleanupFn: Function | undefined}} initFn  
+   * @param {(initRet: any) => Function | undefined} mainFn 
    * @param {{testOptions: {initArgs: Object, iter: number | undefined}[]} | undefined} settings  
    */
   constructor(name, initFn, mainFn, settings) {
@@ -42,7 +44,7 @@ export class Benchmark {
     this.#settings = settings;
   }
 
-  run() {
+  async run() {
     const result = [];
 
     console.log(`test '${this.name}' is running...`)
@@ -50,7 +52,7 @@ export class Benchmark {
     for (const opt of this.#settings.testOptions) {
       const initRet = this.#initFn(opt.initArgs);
 
-      console.log(opt);
+      console.log(opt)
 
       let times = [];
       let memorys = [];
@@ -59,14 +61,20 @@ export class Benchmark {
         const startTime = performance.now();
         const startMemory = performance.memory.usedJSHeapSize;
 
-        this.#mainFn(initRet);
+        let runCleanupFn = this.#mainFn(initRet.args);
 
         const endTime = performance.now();
         const endMemory = performance.memory.usedJSHeapSize;
 
+        runCleanupFn?.call();
+
         times.push(endTime - startTime);
         memorys.push(endMemory - startMemory);
+
+        await wait(10);
       }
+
+      initRet.cleanupFn?.call();
 
       result.push({
         name: this.name,
@@ -76,6 +84,8 @@ export class Benchmark {
         memoryAvg: roundBy(getAvg(memorys), 3),
         memoryStdDiv: roundBy(getStdDiv(memorys), 3)
       });
+
+      await wait(30);
     }
 
     console.log(`test '${this.name}' end`)
