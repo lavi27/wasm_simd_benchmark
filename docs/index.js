@@ -68,13 +68,13 @@ const I32AddWasmFinalTest = new Benchmark('I32Add Wasm Final',
 
 const I32AddJSTest = new Benchmark('I32Add JS',
   ({size}) => {
-    let arr1 = Int32Array.from({length: size}, (_, i) => i);
-    let arr2 = Int32Array.from({length: size}, (_, i) => i);
+    const arr1 = Int32Array.from({length: size}, (_, i) => i);
+    const arr2 = Int32Array.from({length: size}, (_, i) => i);
 
     return {args: {arr1, arr2}}
   },
   ({arr1, arr2}) => {
-    let res = new Int32Array(arr1.length);
+    const res = new Int32Array(arr1.length);
 
     for (let i=0; i<arr1.length; i++) {
       res[i] = arr1[i] + arr2[i];
@@ -146,15 +146,15 @@ const GrayscaleWasmFinalTest = new Benchmark('Grayscale Wasm Final',
 
 const GrayscaleJSTest = new Benchmark('Grayscale JS',
   ({size}) => {
-    let arr = Uint8Array.from({length: size * 3}, (_, i) => i %255);
+    const arr = Uint8Array.from({length: size * 3}, (_, i) => i %255);
 
     return {args: arr}
   },
-  (arr) => {
-    let res = new Uint8Array(arr.length / 3);
-
-    for (let i=0; i<arr.length; i+=3) {
-      res[i] = (arr[i] * 55 + arr[i+1] *183 + arr[i+2] *18) >> 8;
+  (data) => {
+    const res = new Uint8Array(data.length / 3);
+    
+    for (let i1=0, i2=0; i1<data.length; i1+=3, i2++) {
+      res[i2] = data[i1] * 0.2126 + data[i1+1] * 0.7152 + data[i1+2] * 0.0722;
     }
   }, GrayscaleTestSettings);
 
