@@ -145,25 +145,16 @@ pub fn i32_add_final(a: &I32Vec, b: &I32Vec) -> I32Vec {
     let thr_v128_size = a.len() / thread_cnt / 4;
     let remainder_idx = thr_v128_size * 4 * thread_cnt - 1;
 
-    let a_ptr = AtomicPtr::new(a.as_ptr() as *mut i32);
-    let b_ptr = AtomicPtr::new(b.as_ptr() as *mut i32);
-    let res_ptr = AtomicPtr::new(res.as_mut_ptr());
+    a.chunks(4)
+        .zip(b.chunks(4)
+        .zip(res.chunks_mut(4)))
+        .into_par_iter().for_each(|(a, (b, res))| unsafe {
+        let vec_a = v128_load(a.as_ptr());
+        let vec_b = v128_load(b.as_ptr());
 
-    (0..thread_cnt).into_par_iter().for_each(|thr_id| unsafe {
-        let start = thr_id * thr_v128_size;
-        let end = start + thr_v128_size;
-        let a_ptr = a_ptr.load(Ordering::Relaxed) as *const v128;
-        let b_ptr = b_ptr.load(Ordering::Relaxed) as *const v128;
-        let res_ptr = res_ptr.load(Ordering::Relaxed) as *mut v128;
-
-        for i in start..end {
-            let vec_a = v128_load(a_ptr.add(i));
-            let vec_b = v128_load(b_ptr.add(i));
-
-            let vec_res = i32x4_add(vec_a, vec_b);
-            v128_store(res_ptr.add(i), vec_res);
-        }
-    });
+        let vec_res = i32x4_add(vec_a, vec_b);
+        v128_store(res.as_ptr(), vec_res);
+    }
 
     for i in remainder_idx..a.len() {
         res[i] = a[i] + b[i];

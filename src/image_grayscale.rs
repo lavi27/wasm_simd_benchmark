@@ -273,33 +273,33 @@ pub fn image_grayscale_v4(data: &U8Vec) -> U8Vec {
         for i in step_chunks(0..data.len(), 8 * 3) {
             let r_vec = u16x8_extend_u8(
                 *data_ptr.add(i),
-                *data_ptr.add(i + 3),
-                *data_ptr.add(i + 6),
-                *data_ptr.add(i + 9),
-                *data_ptr.add(i + 12),
-                *data_ptr.add(i + 15),
-                *data_ptr.add(i + 18),
-                *data_ptr.add(i + 21),
+                data[3),
+                data[6),
+                data[9),
+                data[12),
+                data[15),
+                data[18),
+                data[21),
             );
             let g_vec = u16x8_extend_u8(
-                *data_ptr.add(i + 1),
-                *data_ptr.add(i + 4),
-                *data_ptr.add(i + 7),
-                *data_ptr.add(i + 10),
-                *data_ptr.add(i + 13),
-                *data_ptr.add(i + 16),
-                *data_ptr.add(i + 19),
-                *data_ptr.add(i + 22),
+                data[1),
+                data[4),
+                data[7),
+                data[10),
+                data[13),
+                data[16),
+                data[19),
+                data[22),
             );
             let b_vec = u16x8_extend_u8(
-                *data_ptr.add(i + 2),
-                *data_ptr.add(i + 5),
-                *data_ptr.add(i + 8),
-                *data_ptr.add(i + 11),
-                *data_ptr.add(i + 14),
-                *data_ptr.add(i + 17),
-                *data_ptr.add(i + 20),
-                *data_ptr.add(i + 23),
+                data[2),
+                data[5),
+                data[8),
+                data[11),
+                data[14),
+                data[17),
+                data[20),
+                data[23),
             );
 
             let b_vec = u16x8_mul(b_vec, u16x8_splat(18));
@@ -339,65 +339,52 @@ pub fn image_grayscale_final(data: &U8Vec) -> U8Vec {
     let remainder_data_idx = thr_unit_size * thread_cnt - 1;
 
     unsafe {
-        let data_ptr = AtomicPtr::new(data.as_ptr() as *mut u8);
-        let res_ptr = AtomicPtr::new(res.as_mut_ptr());
         res.set_len(res.capacity());
-
-        (0..thread_cnt).into_par_iter().for_each(|thr_id| unsafe {
-            let start = thr_id * thr_unit_size;
-            let end = start + thr_unit_size;
-            let data_ptr = data_ptr.load(Ordering::Relaxed);
-            let res_ptr = res_ptr.load(Ordering::Relaxed);
-
-            let mut res_idx = start / 3;
-
-            for i in step_chunks(start..end, 8 * 3) {
-                let r_vec = u16x8_extend_u8(
-                    *data_ptr.add(i),
-                    *data_ptr.add(i + 3),
-                    *data_ptr.add(i + 6),
-                    *data_ptr.add(i + 9),
-                    *data_ptr.add(i + 12),
-                    *data_ptr.add(i + 15),
-                    *data_ptr.add(i + 18),
-                    *data_ptr.add(i + 21),
-                );
-                let g_vec = u16x8_extend_u8(
-                    *data_ptr.add(i + 1),
-                    *data_ptr.add(i + 4),
-                    *data_ptr.add(i + 7),
-                    *data_ptr.add(i + 10),
-                    *data_ptr.add(i + 13),
-                    *data_ptr.add(i + 16),
-                    *data_ptr.add(i + 19),
-                    *data_ptr.add(i + 22),
-                );
-                let b_vec = u16x8_extend_u8(
-                    *data_ptr.add(i + 2),
-                    *data_ptr.add(i + 5),
-                    *data_ptr.add(i + 8),
-                    *data_ptr.add(i + 11),
-                    *data_ptr.add(i + 14),
-                    *data_ptr.add(i + 17),
-                    *data_ptr.add(i + 20),
-                    *data_ptr.add(i + 23),
-                );
-
-                let b_vec = u16x8_mul(b_vec, u16x8_splat(18));
-                let g_vec = u16x8_mul(g_vec, u16x8_splat(183));
-                let r_vec = u16x8_mul(r_vec, u16x8_splat(55));
-
-                let sum = u16x8_add(r_vec, g_vec);
-                let sum = u16x8_add(sum, b_vec);
-
-                let sum = u16x8_shr(sum, 8);
-                let sum = u8x16_narrow_i16x8(sum, u16x8_splat(0));
-
-                v128_store64_lane::<0>(sum, res_ptr.add(res_idx) as *mut u64);
-                res_idx += 8;
-            }
-        });
     }
+
+    data.chunks(8*3).zip(res.chunks_mut(8)).into_par_iter(|(data, res)| unsafe {
+        let r_vec = u16x8_extend_u8(
+            data[0],
+            data[3],
+            data[6],
+            data[9],
+            data[12],
+            data[15],
+            data[18],
+            data[21],
+        );
+        let g_vec = u16x8_extend_u8(
+            data[1],
+            data[4],
+            data[7],
+            data[10],
+            data[13],
+            data[16],
+            data[19],
+            data[22],
+        );
+        let b_vec = u16x8_extend_u8(
+            data[2],
+            data[5],
+            data[8],
+            data[11],
+            data[14],
+            data[17],
+            data[20],
+            data[23],
+        );
+
+        let b_vec = u16x8_mul(b_vec, u16x8_splat(18));
+        let g_vec = u16x8_mul(g_vec, u16x8_splat(183));
+        let sum = u16x8_add(b_vec, g_vec);
+        let r_vec = u16x8_mul(r_vec, u16x8_splat(55));
+        let sum = u16x8_add(sum, r_vec);
+
+        let sum = u16x8_shr(sum, 8);
+        let sum = u8x16_narrow_i16x8(sum, u16x8_splat(0));
+
+        v128_store64_lane::<0>(sum, res.as_mut_ptr().add(res_idx));
+    });
 
     let mut remainder_res_idx = thr_unit_size * thread_cnt / 3 - 1;
 
